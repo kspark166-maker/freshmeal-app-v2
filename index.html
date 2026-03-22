@@ -1,12 +1,1381 @@
 <!DOCTYPE html>
 <html lang="ja">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>FreshMeal AI</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
-  </body>
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
+  <meta name="theme-color" content="#2E7D32"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-title" content="FreshMeal"/>
+  <title>FreshMeal AI</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800;900&family=Noto+Sans+JP:wght@400;500;700;800&display=swap" rel="stylesheet"/>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{background:#FAF8F5;font-family:'Noto Sans JP',sans-serif;overflow-x:hidden;}
+    ::-webkit-scrollbar{display:none;}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+    @keyframes bounce{from{transform:translateY(0)}to{transform:translateY(-6px)}}
+    @keyframes slideIn{from{opacity:0;transform:translateX(24px)}to{opacity:1;transform:translateX(0)}}
+    @keyframes floatBob{from{transform:translateY(0)}to{transform:translateY(-9px)}}
+    @keyframes sheetUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+    @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+    input,button{font-family:'Noto Sans JP',sans-serif;}
+  </style>
+</head>
+<body>
+<div id="root"></div>
+<script src="https://cdn.jsdelivr.net/npm/react@18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7.23.2/babel.min.js"></script>
+<script type="text/babel" data-type="module">
+
+/* ══════════════════════════════════════════
+   STATIC DATA
+══════════════════════════════════════════ */
+const TABS = ["cook","recipes","shopping","seasoning"];
+const TAB_META = [
+  {id:"cook",     icon:"🍳", label:"ご飯作る"},
+  {id:"recipes",  icon:"📖", label:"レシピ"},
+  {id:"shopping", icon:"🛒", label:"買い物"},
+  {id:"seasoning",icon:"🧂", label:"調味料"},
+];
+const GENRES = [
+  {id:"any",      label:"🎲 お任せ",    sub:"なんでもOK",   bg:"#FF6B35",light:"#FFF0EB"},
+  {id:"japanese", label:"🍱 和食",       sub:"ほっとする味", bg:"#2D9B6F",light:"#E8F8F2"},
+  {id:"western",  label:"🍝 洋食",       sub:"レストラン風", bg:"#3B82F6",light:"#EEF4FF"},
+  {id:"chinese",  label:"🥢 中華",       sub:"本格スパイス", bg:"#E8900A",light:"#FFFBEB"},
+  {id:"korean",   label:"🌶️ 韓国",      sub:"ピリ辛うまい", bg:"#D72638",light:"#FEF2F2"},
+  {id:"italian",  label:"🍕 イタリアン",sub:"ビストロ気分", bg:"#0D8A4E",light:"#ECFDF5"},
+  {id:"light",    label:"🥗 軽め",       sub:"ヘルシー志向", bg:"#7C3AED",light:"#F5F3FF"},
+  {id:"soup",     label:"🍲 汁物",       sub:"あったか系",   bg:"#D4621A",light:"#FFF7ED"},
+];
+const DISH_COUNTS = [
+  {n:1,label:"一品",emoji:"🍜",grad:"linear-gradient(145deg,#FFDDC1,#FFB347)"},
+  {n:2,label:"二品",emoji:"🍱",grad:"linear-gradient(145deg,#C1FFD7,#5EBD8E)"},
+  {n:3,label:"三品",emoji:"🥘",grad:"linear-gradient(145deg,#C1DDFF,#5E9EBD)"},
+  {n:4,label:"四品+",emoji:"🎉",grad:"linear-gradient(145deg,#F3C1FF,#BD5EBD)"},
+];
+const RECIPE_GRADS = [
+  "linear-gradient(145deg,#FF6B35,#FFB347)",
+  "linear-gradient(145deg,#2D9B6F,#7DEBB8)",
+  "linear-gradient(145deg,#3B6CF6,#A0BCFF)",
+  "linear-gradient(145deg,#D4621A,#F5A855)",
+];
+const RECIPE_BG_EMOJIS=[["🍳","🥘","🍜"],["🌿","🥬","🥦"],["🍝","🥩","🧄"],["🥣","🌶️","🍲"]];
+
+// 人気・おすすめ献立（ジャンル別）
+const POPULAR = {
+  any:[
+    {name:"肉じゃが",         emoji:"🥘", time:"25分", tag:"殿堂入り",  tagC:"#FF6B35"},
+    {name:"鶏の唐揚げ",       emoji:"🍗", time:"20分", tag:"人気No.1",  tagC:"#E8900A"},
+    {name:"豚キムチ炒め",     emoji:"🥬", time:"15分", tag:"リピート率高", tagC:"#D72638"},
+    {name:"親子丼",           emoji:"🍚", time:"15分", tag:"時短",       tagC:"#2D9B6F"},
+    {name:"麻婆豆腐",         emoji:"🌶️", time:"20分", tag:"人気",       tagC:"#E8900A"},
+    {name:"野菜炒め",         emoji:"🥦", time:"10分", tag:"ヘルシー",   tagC:"#7C3AED"},
+  ],
+  japanese:[
+    {name:"肉じゃが",         emoji:"🥘", time:"25分", tag:"定番",       tagC:"#2D9B6F"},
+    {name:"鯖の味噌煮",       emoji:"🐟", time:"20分", tag:"栄養満点",   tagC:"#3B82F6"},
+    {name:"筑前煮",           emoji:"🥕", time:"30分", tag:"おふくろの味", tagC:"#E8900A"},
+    {name:"ほうれん草のおひたし",emoji:"🥬", time:"10分", tag:"副菜",    tagC:"#2D9B6F"},
+    {name:"豚汁",             emoji:"🍲", time:"20分", tag:"体が温まる", tagC:"#D4621A"},
+    {name:"炊き込みご飯",     emoji:"🍚", time:"40分", tag:"ごちそう",   tagC:"#FF6B35"},
+  ],
+  western:[
+    {name:"ハンバーグ",       emoji:"🍔", time:"25分", tag:"子供大好き", tagC:"#FF6B35"},
+    {name:"クリームシチュー", emoji:"🥣", time:"30分", tag:"冬定番",     tagC:"#3B82F6"},
+    {name:"ナポリタン",       emoji:"🍝", time:"15分", tag:"懐かし味",   tagC:"#E8900A"},
+    {name:"グラタン",         emoji:"🧀", time:"35分", tag:"人気",       tagC:"#D4621A"},
+    {name:"ロールキャベツ",   emoji:"🥬", time:"40分", tag:"ごちそう",   tagC:"#2D9B6F"},
+    {name:"唐揚げ",           emoji:"🍗", time:"20分", tag:"定番",       tagC:"#FF6B35"},
+  ],
+  chinese:[
+    {name:"麻婆豆腐",         emoji:"🌶️", time:"15分", tag:"本格派",     tagC:"#D72638"},
+    {name:"回鍋肉",           emoji:"🥬", time:"15分", tag:"ご飯が進む", tagC:"#E8900A"},
+    {name:"チンジャオロース", emoji:"🫑", time:"15分", tag:"人気",       tagC:"#2D9B6F"},
+    {name:"酢豚",             emoji:"🍖", time:"25分", tag:"甘酸っぱい", tagC:"#FF6B35"},
+    {name:"餃子",             emoji:"🥟", time:"30分", tag:"みんな大好き", tagC:"#D72638"},
+    {name:"八宝菜",           emoji:"🥦", time:"15分", tag:"野菜たっぷり", tagC:"#2D9B6F"},
+  ],
+  korean:[
+    {name:"豚キムチ",         emoji:"🥬", time:"15分", tag:"ピリ辛",     tagC:"#D72638"},
+    {name:"ビビンバ",         emoji:"🍚", time:"20分", tag:"彩り豊か",   tagC:"#E8900A"},
+    {name:"チヂミ",           emoji:"🥞", time:"15分", tag:"おつまみ",   tagC:"#FF6B35"},
+    {name:"スンドゥブ",       emoji:"🍲", time:"15分", tag:"体温まる",   tagC:"#D4621A"},
+    {name:"タッカルビ",       emoji:"🍗", time:"20分", tag:"ボリューム", tagC:"#E8900A"},
+    {name:"ナムル盛り合わせ", emoji:"🥗", time:"15分", tag:"ヘルシー",   tagC:"#2D9B6F"},
+  ],
+  italian:[
+    {name:"カルボナーラ",     emoji:"🍝", time:"20分", tag:"濃厚",       tagC:"#E8900A"},
+    {name:"マルゲリータ",     emoji:"🍕", time:"25分", tag:"定番",       tagC:"#D72638"},
+    {name:"ミートソース",     emoji:"🍝", time:"30分", tag:"家族に人気", tagC:"#FF6B35"},
+    {name:"アクアパッツァ",   emoji:"🐟", time:"20分", tag:"おしゃれ",   tagC:"#3B82F6"},
+    {name:"リゾット",         emoji:"🍚", time:"25分", tag:"本格",       tagC:"#2D9B6F"},
+    {name:"カプレーゼ",       emoji:"🍅", time:"5分",  tag:"副菜",       tagC:"#D72638"},
+  ],
+  light:[
+    {name:"サラダチキン",     emoji:"🥗", time:"10分", tag:"高たんぱく", tagC:"#7C3AED"},
+    {name:"豆腐のサラダ",     emoji:"🥬", time:"5分",  tag:"低カロリー", tagC:"#2D9B6F"},
+    {name:"蒸し野菜",         emoji:"🥦", time:"10分", tag:"ヘルシー",   tagC:"#2D9B6F"},
+    {name:"ガスパチョ",       emoji:"🍅", time:"10分", tag:"夏向き",     tagC:"#D72638"},
+    {name:"アボカドサラダ",   emoji:"🥑", time:"5分",  tag:"美容",       tagC:"#7C3AED"},
+    {name:"きのこのスープ",   emoji:"🍄", time:"15分", tag:"免疫UP",     tagC:"#E8900A"},
+  ],
+  soup:[
+    {name:"豚汁",             emoji:"🍲", time:"20分", tag:"定番",       tagC:"#D4621A"},
+    {name:"ミネストローネ",   emoji:"🍅", time:"25分", tag:"野菜たっぷり", tagC:"#D72638"},
+    {name:"クラムチャウダー", emoji:"🦪", time:"20分", tag:"クリーミー", tagC:"#3B82F6"},
+    {name:"スンドゥブ",       emoji:"🌶️", time:"15分", tag:"ピリ辛",     tagC:"#D72638"},
+    {name:"中華スープ",       emoji:"🥣", time:"10分", tag:"あっさり",   tagC:"#E8900A"},
+    {name:"けんちん汁",       emoji:"🥕", time:"20分", tag:"体温まる",   tagC:"#2D9B6F"},
+  ],
+};
+
+// よく使う食材タグ（入力補助）
+const INGREDIENT_TAGS = ["鶏むね肉","豚肉","牛肉","卵","豆腐","キャベツ","にんじん","玉ねぎ","じゃがいも","トマト","ほうれん草","もやし","ピーマン","なす","きのこ","鮭","ツナ缶","チーズ"];
+
+/* ══════════════════════════════════════════
+   HELPERS
+══════════════════════════════════════════ */
+function blobToB64(b){return new Promise(r=>{const f=new FileReader();f.onload=()=>r(f.result.split(",")[1]);f.readAsDataURL(b);});}
+async function capFrame(v){const c=document.createElement("canvas");c.width=v.videoWidth||640;c.height=v.videoHeight||480;c.getContext("2d").drawImage(v,0,0);return new Promise(r=>c.toBlob(b=>r(b),"image/jpeg",0.85));}
+async function callClaude(messages,system){
+  const res=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:4000,system,messages})});
+  const d=await res.json();
+  return(d.content?.map(x=>x.text||"").join("")||"").replace(/```json\n?/g,"").replace(/```\n?/g,"").trim();
+}
+
+/* ══════════════════════════════════════════
+   SVG LEAF LOGO
+══════════════════════════════════════════ */
+function LeafLogo({size=40}){
+  return(
+    <svg width={size} height={size} viewBox="0 0 48 48" fill="none">
+      <circle cx="24" cy="24" r="24" fill="url(#lb)"/>
+      <path d="M24 8 C34 8 40 16 38 28 C36 36 28 40 22 38 C14 36 10 28 14 18 C17 11 24 8 24 8Z" fill="url(#lg)"/>
+      <path d="M24 38 C22 30 20 22 24 8" stroke="rgba(255,255,255,0.6)" strokeWidth="1.5" strokeLinecap="round"/>
+      <path d="M24 28 C20 26 16 24 14 20" stroke="rgba(255,255,255,0.4)" strokeWidth="1" strokeLinecap="round"/>
+      <path d="M24 22 C20 20 17 17 16 14" stroke="rgba(255,255,255,0.3)" strokeWidth="1" strokeLinecap="round"/>
+      <path d="M24 28 C28 26 32 23 34 20" stroke="rgba(255,255,255,0.4)" strokeWidth="1" strokeLinecap="round"/>
+      <defs>
+        <linearGradient id="lb" x1="0" y1="0" x2="48" y2="48"><stop stopColor="#4CAF50"/><stop offset="1" stopColor="#1B5E20"/></linearGradient>
+        <linearGradient id="lg" x1="14" y1="8" x2="38" y2="40"><stop stopColor="#81C784"/><stop offset="1" stopColor="#2E7D32"/></linearGradient>
+      </defs>
+    </svg>
+  );
+}
+
+/* ══════════════════════════════════════════
+   SMART SEARCH BAR  ← NEW
+══════════════════════════════════════════ */
+function SearchBar({value, onChange, onSearch, onClear, genres, placeholder}){
+  const [focused, setFocused] = useState(false);
+  const activeGenre = GENRES.find(g=>genres.includes(g.id) && g.id!=="any");
+  const accentColor = activeGenre ? activeGenre.bg : "#FF6B35";
+
+  return(
+    <div style={{flex:1}}>
+      <div style={{
+        display:"flex", alignItems:"center", gap:8,
+        background:"#fff",
+        borderRadius:16,
+        border: focused ? `2px solid ${accentColor}` : "2px solid #EDE9E4",
+        padding:"0 12px",
+        boxShadow: focused ? `0 0 0 3px ${accentColor}18` : "0 2px 8px rgba(0,0,0,0.06)",
+        transition:"all 0.2s",
+        height:44,
+      }}>
+        {/* genre color dot or search icon */}
+        {activeGenre ? (
+          <div style={{width:22,height:22,borderRadius:"50%",background:activeGenre.bg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,flexShrink:0}}>
+            {activeGenre.label.split(" ")[0]}
+          </div>
+        ) : (
+          <span style={{fontSize:17,color:"#C0B8B0",flexShrink:0}}>🔍</span>
+        )}
+
+        <input
+          value={value}
+          onChange={e=>onChange(e.target.value)}
+          onFocus={()=>setFocused(true)}
+          onBlur={()=>setFocused(false)}
+          onKeyDown={e=>e.key==="Enter"&&onSearch()}
+          placeholder={placeholder}
+          style={{
+            flex:1, border:"none", outline:"none", fontSize:13, fontWeight:500,
+            color:"#1a1a1a", background:"transparent", fontFamily:"'Noto Sans JP',sans-serif",
+            minWidth:0,
+          }}
+        />
+
+        {value ? (
+          <button onClick={onClear} style={{flexShrink:0,background:"none",border:"none",fontSize:16,color:"#C0B8B0",cursor:"pointer",padding:"0 2px",lineHeight:1}}>✕</button>
+        ) : (
+          <span style={{fontSize:14,color:"#D0C8C0",flexShrink:0}}>|</span>
+        )}
+
+        <button onClick={onSearch} style={{
+          flexShrink:0, background:`linear-gradient(135deg,${accentColor},${accentColor}CC)`,
+          border:"none", borderRadius:10, padding:"5px 10px",
+          color:"#fff", fontSize:11, fontWeight:800, cursor:"pointer",
+          boxShadow:`0 2px 8px ${accentColor}44`,
+          fontFamily:"'Noto Sans JP',sans-serif",
+          whiteSpace:"nowrap",
+        }}>
+          検索
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════
+   RECIPE CREATE MODAL
+══════════════════════════════════════════ */
+function RecipeCreateModal({genres, onClose, onDone}){
+  const [step, setStep]           = useState(1); // 1=input 2=loading 3=done
+  const [recipeName, setRecipeName] = useState("");
+  const [freeIngredients, setFreeIngredients] = useState("");
+  const [portions, setPortions]   = useState(2);
+  const [level, setLevel]         = useState("normal"); // easy/normal/pro
+  const [result, setResult]       = useState(null);
+  const [inputFocused, setInputFocused] = useState(false);
+
+  const LEVELS = [
+    {id:"easy",  label:"簡単",  emoji:"😊", color:"#4CAF50"},
+    {id:"normal",label:"普通",  emoji:"👨‍🍳", color:"#FF6B35"},
+    {id:"pro",   label:"本格派",emoji:"⭐", color:"#7C3AED"},
+  ];
+
+  const handleGenerate = async () => {
+    if(!recipeName.trim() && !freeIngredients.trim()) return;
+    setStep(2);
+    const gl = genres.includes("any")?"お任せ":genres.join(", ");
+    const nameHint   = recipeName.trim()    ? `料理名のヒント:「${recipeName}」` : "";
+    const ingHint    = freeIngredients.trim()? `使いたい食材:「${freeIngredients}」` : "";
+    const levelLabel = LEVELS.find(l=>l.id===level)?.label || "普通";
+    try{
+      const res = await callClaude([{role:"user", content:
+        `以下の条件でオリジナルレシピを1品作成してください。${nameHint} ${ingHint} ジャンル:${gl} 難易度:${levelLabel} 人数:${portions}人分
+JSONのみで返してください:
+{"name":"料理名","emoji":"絵文字","time":"調理時間","finishEmoji":"完成絵文字","finishDesc":"完成の一言説明","ingredients":[{"name":"食材名","amount":"分量","urgent":false}],"steps":[{"desc":"手順の説明","tip":"ポイント(任意)"}],"nutrition":{"calories":数値,"protein":0-100,"fat":0-100,"carbs":0-100,"vitamins":0-100},"nutritionBalance":"栄養コメント"}`
+      }], "プロの料理人。わかりやすく美味しいレシピを提案する。");
+      const parsed = JSON.parse(res);
+      setResult(parsed);
+      setStep(3);
+    } catch {
+      setResult({
+        name: recipeName || "オリジナル炒め", emoji:"🍳", time:"20分",
+        finishEmoji:"✨😋", finishDesc:"こんがり美味しく仕上がります",
+        ingredients:[{name:"鶏むね肉",amount:"200g"},{name:"野菜類",amount:"適量"},{name:"醤油",amount:"大さじ2"}],
+        steps:[{desc:"材料を食べやすい大きさに切る"},{desc:"フライパンで炒めて味付けする",tip:"強火でさっと炒めるのがコツ"},{desc:"盛り付けて完成"}],
+        nutrition:{calories:320,protein:65,fat:30,carbs:35,vitamins:55},
+        nutritionBalance:"バランスの良い一品です。",
+      });
+      setStep(3);
+    }
+  };
+
+  const accentColor = GENRES.find(g=>genres.includes(g.id)&&g.id!=="any")?.bg || "#FF6B35";
+  const acs=["#FF6B35","#2D9B6F","#3B6CF6","#D4621A"];
+
+  return(
+    <div style={{position:"fixed",inset:0,zIndex:400,display:"flex",flexDirection:"column",justifyContent:"flex-end"}}>
+      {/* backdrop */}
+      <div onClick={onClose} style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.45)",backdropFilter:"blur(4px)"}}/>
+
+      {/* sheet */}
+      <div style={{position:"relative",background:"#FAF8F5",borderRadius:"24px 24px 0 0",maxHeight:"90vh",display:"flex",flexDirection:"column",animation:"sheetUp 0.3s cubic-bezier(.4,0,.2,1)"}}>
+        {/* handle */}
+        <div style={{display:"flex",justifyContent:"center",padding:"10px 0 0"}}>
+          <div style={{width:36,height:4,borderRadius:2,background:"#D8CFC5"}}/>
+        </div>
+
+        {/* header */}
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 18px 8px"}}>
+          <div style={{display:"flex",alignItems:"center",gap:8}}>
+            <div style={{width:34,height:34,borderRadius:10,background:`linear-gradient(135deg,${accentColor},${accentColor}CC)`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,boxShadow:`0 3px 10px ${accentColor}44`}}>📝</div>
+            <div>
+              <div style={{fontSize:15,fontWeight:900,color:"#1a1a1a",fontFamily:"'Playfair Display',serif"}}>レシピ作成</div>
+              <div style={{fontSize:10,color:"#C0B8B0",fontWeight:600}}>AIがオリジナルレシピを生成します</div>
+            </div>
+          </div>
+          <button onClick={onClose} style={{background:"#F0EDE8",border:"none",borderRadius:10,width:30,height:30,fontSize:14,cursor:"pointer",color:"#888",display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
+        </div>
+
+        <div style={{flex:1,overflowY:"auto",padding:"0 16px 24px"}}>
+
+          {/* ── STEP 1: INPUT ── */}
+          {step===1&&(
+            <div style={{animation:"fadeUp 0.2s ease"}}>
+              {/* recipe name */}
+              <div style={{marginBottom:14}}>
+                <div style={{fontSize:10,fontWeight:800,letterSpacing:2,color:"#C8C0B4",textTransform:"uppercase",marginBottom:7}}>作りたい料理名（任意）</div>
+                <input
+                  value={recipeName}
+                  onChange={e=>setRecipeName(e.target.value)}
+                  placeholder="例：肉じゃが、カルボナーラ..."
+                  onFocus={()=>setInputFocused(true)}
+                  onBlur={()=>setInputFocused(false)}
+                  style={{width:"100%",border:`1.5px solid ${inputFocused?"#FF6B35":"#EDE9E4"}`,borderRadius:13,padding:"10px 13px",fontSize:13,color:"#1a1a1a",outline:"none",background:"#fff",fontFamily:"'Noto Sans JP',sans-serif",transition:"border-color 0.2s"}}
+                />
+              </div>
+
+              {/* ingredients */}
+              <div style={{marginBottom:14}}>
+                <div style={{fontSize:10,fontWeight:800,letterSpacing:2,color:"#C8C0B4",textTransform:"uppercase",marginBottom:7}}>使いたい食材（任意）</div>
+                <input
+                  value={freeIngredients}
+                  onChange={e=>setFreeIngredients(e.target.value)}
+                  placeholder="例：鶏肉、じゃがいも、たまねぎ..."
+                  style={{width:"100%",border:"1.5px solid #EDE9E4",borderRadius:13,padding:"10px 13px",fontSize:13,color:"#1a1a1a",outline:"none",background:"#fff",fontFamily:"'Noto Sans JP',sans-serif"}}
+                />
+              </div>
+
+              {/* portions */}
+              <div style={{marginBottom:14}}>
+                <div style={{fontSize:10,fontWeight:800,letterSpacing:2,color:"#C8C0B4",textTransform:"uppercase",marginBottom:7}}>人数</div>
+                <div style={{display:"flex",gap:8}}>
+                  {[1,2,3,4].map(n=>(
+                    <button key={n} onClick={()=>setPortions(n)} style={{flex:1,padding:"9px 0",borderRadius:12,border:portions===n?`2px solid ${accentColor}`:"2px solid #EDE9E4",background:portions===n?`${accentColor}15`:"#fff",color:portions===n?accentColor:"#999",fontSize:14,fontWeight:800,cursor:"pointer",transition:"all 0.18s",fontFamily:"'Playfair Display',serif"}}>
+                      {n}<span style={{fontSize:10,fontWeight:600,marginLeft:2}}>人</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* difficulty */}
+              <div style={{marginBottom:20}}>
+                <div style={{fontSize:10,fontWeight:800,letterSpacing:2,color:"#C8C0B4",textTransform:"uppercase",marginBottom:7}}>難易度</div>
+                <div style={{display:"flex",gap:8}}>
+                  {LEVELS.map(l=>(
+                    <button key={l.id} onClick={()=>setLevel(l.id)} style={{flex:1,padding:"10px 0",borderRadius:13,border:level===l.id?`2px solid ${l.color}`:"2px solid #EDE9E4",background:level===l.id?`${l.color}15`:"#fff",color:level===l.id?l.color:"#aaa",fontSize:12,fontWeight:level===l.id?800:600,cursor:"pointer",transition:"all 0.18s",display:"flex",flexDirection:"column",alignItems:"center",gap:3}}>
+                      <span style={{fontSize:18}}>{l.emoji}</span>
+                      <span>{l.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <button
+                onClick={handleGenerate}
+                disabled={!recipeName.trim()&&!freeIngredients.trim()}
+                style={{width:"100%",padding:"14px 0",borderRadius:16,background:(!recipeName.trim()&&!freeIngredients.trim())?"#E8E0D8":`linear-gradient(135deg,${accentColor},${accentColor}CC)`,color:(!recipeName.trim()&&!freeIngredients.trim())?"#B8B0A8":"#fff",border:"none",fontSize:15,fontWeight:900,cursor:(!recipeName.trim()&&!freeIngredients.trim())?"not-allowed":"pointer",boxShadow:(!recipeName.trim()&&!freeIngredients.trim())?"none":`0 6px 20px ${accentColor}44`,fontFamily:"'Playfair Display',serif",letterSpacing:0.3,transition:"all 0.2s"}}
+              >
+                ✨ AIでレシピを生成する
+              </button>
+            </div>
+          )}
+
+          {/* ── STEP 2: LOADING ── */}
+          {step===2&&(
+            <div style={{display:"flex",flexDirection:"column",alignItems:"center",padding:"40px 0",gap:14,animation:"fadeUp 0.2s ease"}}>
+              <div style={{fontSize:60,animation:"spin 2s linear infinite"}}>🍳</div>
+              <div style={{fontSize:15,fontWeight:800,color:"#1a1a1a",fontFamily:"'Playfair Display',serif"}}>レシピを考案中…</div>
+              <div style={{fontSize:11,color:"#C0B8B0",animation:"pulse 2s infinite"}}>AIが最高のレシピを生成しています</div>
+              <div style={{display:"flex",gap:7}}>
+                {[0,1,2].map(i=><div key={i} style={{width:8,height:8,borderRadius:"50%",background:accentColor,animation:`bounce 0.8s ${i*0.18}s ease-in-out infinite alternate`}}/>)}
+              </div>
+            </div>
+          )}
+
+          {/* ── STEP 3: RESULT ── */}
+          {step===3&&result&&(
+            <div style={{animation:"fadeUp 0.25s ease"}}>
+              {/* hero card */}
+              <div style={{borderRadius:18,overflow:"hidden",marginBottom:12,boxShadow:"0 4px 18px rgba(0,0,0,0.09)"}}>
+                <div style={{height:120,background:RECIPE_GRADS[0],position:"relative",overflow:"hidden"}}>
+                  {["🍳","🥘","🍜"].map((e,i)=>(
+                    <div key={i} style={{position:"absolute",fontSize:i===0?68:46,opacity:0.12,top:i<1?"5%":"42%",left:[`5%`,`42%`,`68%`][i],transform:`rotate(${[-15,20,-8][i]}deg)`}}>{e}</div>
+                  ))}
+                  <div style={{position:"absolute",inset:0,background:"linear-gradient(to top,rgba(0,0,0,0.5),transparent 55%)"}}/>
+                  <div style={{position:"absolute",bottom:0,left:0,right:0,padding:"10px 14px",display:"flex",alignItems:"flex-end",gap:8}}>
+                    <div style={{fontSize:36}}>{result.emoji||"🍳"}</div>
+                    <div>
+                      <div style={{fontSize:15,fontWeight:800,color:"#fff",textShadow:"0 2px 8px rgba(0,0,0,0.5)"}}>{result.name}</div>
+                      <span style={{background:"rgba(255,255,255,0.2)",color:"#fff",fontSize:10,fontWeight:700,padding:"1px 8px",borderRadius:100,border:"1px solid rgba(255,255,255,0.3)"}}>⏱ {result.time} · {portions}人分</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{background:"#fff",padding:"12px 14px"}}>
+                  {/* ingredients */}
+                  <div style={{fontSize:9,fontWeight:800,letterSpacing:2,color:"#C8C0B4",textTransform:"uppercase",marginBottom:7}}>材　料</div>
+                  <div style={{display:"flex",flexWrap:"wrap",gap:5,marginBottom:12}}>
+                    {result.ingredients?.map((ing,i)=>(
+                      <span key={i} style={{padding:"3px 9px",borderRadius:100,fontSize:11,fontWeight:700,background:"#F5FFF5",border:"1.5px solid #C8E8CA",color:"#2E7D32"}}>
+                        {ing.name}<span style={{opacity:0.55,fontWeight:400}}> {ing.amount}</span>
+                      </span>
+                    ))}
+                  </div>
+
+                  {/* steps */}
+                  <div style={{fontSize:9,fontWeight:800,letterSpacing:2,color:"#C8C0B4",textTransform:"uppercase",marginBottom:8}}>作り方</div>
+                  {result.steps?.map((s,i)=>(
+                    <div key={i} style={{display:"flex",gap:9,marginBottom:9,alignItems:"flex-start"}}>
+                      <div style={{width:24,height:24,borderRadius:8,flexShrink:0,background:`linear-gradient(135deg,${accentColor},${accentColor}CC)`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:900,color:"#fff"}}>{i+1}</div>
+                      <div style={{flex:1,paddingTop:3}}>
+                        <div style={{fontSize:12,lineHeight:1.6,color:"#333",fontWeight:500}}>{s.desc}</div>
+                        {s.tip&&<div style={{fontSize:10,color:"#E8900A",marginTop:2}}>💡{s.tip}</div>}
+                      </div>
+                    </div>
+                  ))}
+
+                  {/* finish */}
+                  <div style={{marginTop:4,marginBottom:12}}>
+                    <FinishImage recipe={result} accentColor={accentColor}/>
+                  </div>
+
+                  {/* nutrition */}
+                  {result.nutrition&&(
+                    <div style={{padding:"9px 11px",background:"#FAFDF8",borderRadius:12,border:"1.5px solid #DDEEDD",marginBottom:4}}>
+                      <div style={{fontSize:9,fontWeight:800,letterSpacing:2,color:"#C0B8B0",textTransform:"uppercase",marginBottom:7}}>栄 養 バ ラ ン ス</div>
+                      {[["たんぱく質",result.nutrition.protein,"#42A5F5"],["脂質",result.nutrition.fat,"#FFA726"],["炭水化物",result.nutrition.carbs,"#66BB6A"],["ビタミン",result.nutrition.vitamins,"#AB47BC"]].map(([l,p,c])=>(
+                        <div key={l} style={{marginBottom:5}}>
+                          <div style={{display:"flex",justifyContent:"space-between",fontSize:10,color:"#999",marginBottom:2,fontWeight:600}}><span>{l}</span><span style={{color:c}}>{p}%</span></div>
+                          <div style={{height:5,borderRadius:3,background:"#F0F0F0",overflow:"hidden"}}><div style={{height:"100%",width:`${p}%`,background:c,borderRadius:3,transition:"width 1s ease"}}/></div>
+                        </div>
+                      ))}
+                      <div style={{fontSize:10,color:"#C0B8B0",fontWeight:600,marginTop:4,textAlign:"right"}}>{result.nutrition.calories} kcal/人</div>
+                    </div>
+                  )}
+                  {result.nutritionBalance&&<div style={{fontSize:11,color:"#2E7D32",fontWeight:600,background:"#E8F5E9",borderRadius:10,padding:"7px 10px",marginTop:6}}>📊 {result.nutritionBalance}</div>}
+                </div>
+              </div>
+
+              <div style={{display:"flex",gap:8}}>
+                <button onClick={()=>{setStep(1);setResult(null);}} style={{flex:1,padding:"12px 0",borderRadius:14,background:"#F0EDE8",color:"#888",border:"none",fontSize:13,fontWeight:700,cursor:"pointer"}}>
+                  🔄 作り直す
+                </button>
+                <button onClick={()=>{onDone(result);onClose();}} style={{flex:2,padding:"12px 0",borderRadius:14,background:`linear-gradient(135deg,${accentColor},${accentColor}CC)`,color:"#fff",border:"none",fontSize:13,fontWeight:800,cursor:"pointer",boxShadow:`0 5px 16px ${accentColor}44`,fontFamily:"'Playfair Display',serif"}}>
+                  ✅ レシピに追加する
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════
+   POPULAR DISHES SECTION  ← NEW
+══════════════════════════════════════════ */
+function PopularSection({genres, onSelectDish}){
+  const genreId = genres.find(g=>g!=="any") || "any";
+  const items = POPULAR[genreId] || POPULAR.any;
+  const genreInfo = GENRES.find(g=>g.id===genreId);
+  const label = genreId==="any" ? "🔥 人気の献立" : `${genreInfo?.label} の人気献立`;
+  const accentColor = genreInfo?.bg || "#FF6B35";
+
+  return(
+    <div style={{marginBottom:10}}>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
+        <div style={{fontSize:11,fontWeight:800,letterSpacing:2,color:"#C8C0B4",textTransform:"uppercase",display:"flex",alignItems:"center",gap:5}}>
+          <span style={{fontSize:14}}>✨</span>
+          {genreId==="any" ? "人 気 の 献 立" : `${genreInfo?.label?.replace(/[🎲🍱🍝🥢🌶️🍕🥗🍲]/g,"")} の 人 気 献 立`}
+        </div>
+      </div>
+
+      {/* horizontal scroll row */}
+      <div style={{display:"flex",gap:8,overflowX:"auto",paddingBottom:6,marginLeft:-12,paddingLeft:12,marginRight:-12,paddingRight:12,scrollbarWidth:"none"}}>
+        {items.map((dish,i)=>(
+          <button
+            key={i}
+            onClick={()=>onSelectDish(dish.name)}
+            style={{
+              flexShrink:0, width:110,
+              background:"#fff", border:`1.5px solid ${accentColor}22`,
+              borderRadius:16, padding:"10px 8px",
+              cursor:"pointer", transition:"all 0.18s",
+              boxShadow:"0 2px 10px rgba(0,0,0,0.06)",
+              textAlign:"center",
+            }}
+          >
+            <div style={{fontSize:28,marginBottom:4}}>{dish.emoji}</div>
+            <div style={{fontSize:11,fontWeight:800,color:"#1a1a1a",lineHeight:1.3,marginBottom:5}}>{dish.name}</div>
+            <div style={{display:"flex",flexDirection:"column",gap:3,alignItems:"center"}}>
+              <span style={{fontSize:9,fontWeight:700,color:dish.tagC,background:`${dish.tagC}15`,padding:"1px 6px",borderRadius:100,border:`1px solid ${dish.tagC}30`}}>{dish.tag}</span>
+              <span style={{fontSize:9,color:"#C0B8B0"}}>⏱ {dish.time}</span>
+            </div>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════
+   INGREDIENT INPUT PANEL  ← NEW
+══════════════════════════════════════════ */
+function IngredientInputPanel({manualIngredients, onAdd, onRemove, onGenerate}){
+  const [input, setInput] = useState("");
+
+  const addItem = (name) => {
+    const trimmed = name.trim();
+    if(!trimmed || manualIngredients.includes(trimmed)) return;
+    onAdd(trimmed);
+    setInput("");
+  };
+
+  return(
+    <div style={{marginBottom:10}}>
+      <div style={{fontSize:9,fontWeight:800,letterSpacing:2.5,color:"#C8C0B4",textTransform:"uppercase",marginBottom:8,display:"flex",alignItems:"center",gap:5}}>
+        <span style={{fontSize:13}}>✏️</span>食 材 を 手 入 力
+      </div>
+
+      {/* text input */}
+      <div style={{display:"flex",gap:8,marginBottom:8}}>
+        <input
+          value={input}
+          onChange={e=>setInput(e.target.value)}
+          onKeyDown={e=>{if(e.key==="Enter"){addItem(input);}}}
+          placeholder="例：鶏むね肉、トマト..."
+          style={{flex:1,border:"1.5px solid #EDE9E4",borderRadius:12,padding:"9px 12px",fontSize:12,color:"#1a1a1a",outline:"none",background:"#fff",fontFamily:"'Noto Sans JP',sans-serif"}}
+        />
+        <button
+          onClick={()=>addItem(input)}
+          style={{padding:"9px 14px",borderRadius:12,background:"linear-gradient(135deg,#4CAF50,#2E7D32)",color:"#fff",border:"none",fontSize:12,fontWeight:800,cursor:"pointer",boxShadow:"0 3px 10px rgba(76,175,80,0.35)",whiteSpace:"nowrap"}}
+        >
+          追加
+        </button>
+      </div>
+
+      {/* quick tag chips */}
+      <div style={{display:"flex",flexWrap:"wrap",gap:5,marginBottom:8}}>
+        {INGREDIENT_TAGS.map(tag=>(
+          <button
+            key={tag}
+            onClick={()=>addItem(tag)}
+            disabled={manualIngredients.includes(tag)}
+            style={{
+              padding:"4px 10px",borderRadius:100,fontSize:11,fontWeight:600,cursor:"pointer",border:"none",
+              background:manualIngredients.includes(tag)?"#E8F5E9":"#F5F5F5",
+              color:manualIngredients.includes(tag)?"#2E7D32":"#888",
+              transition:"all 0.15s",
+            }}
+          >
+            {manualIngredients.includes(tag) ? "✓ " : ""}{tag}
+          </button>
+        ))}
+      </div>
+
+      {/* selected ingredients */}
+      {manualIngredients.length > 0 && (
+        <div style={{background:"#F7FDF8",borderRadius:14,padding:"10px 12px",border:"1.5px solid #C8E8CA",marginBottom:8}}>
+          <div style={{fontSize:10,color:"#7DBF9A",fontWeight:700,marginBottom:6}}>選択中の食材 ({manualIngredients.length})</div>
+          <div style={{display:"flex",flexWrap:"wrap",gap:5}}>
+            {manualIngredients.map(ing=>(
+              <span
+                key={ing}
+                style={{display:"inline-flex",alignItems:"center",gap:4,padding:"3px 10px",borderRadius:100,background:"#fff",border:"1.5px solid #C8E8CA",fontSize:11,fontWeight:700,color:"#2E7D32"}}
+              >
+                {ing}
+                <button onClick={()=>onRemove(ing)} style={{background:"none",border:"none",color:"#A0C8A4",cursor:"pointer",fontSize:12,lineHeight:1,padding:0}}>✕</button>
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {manualIngredients.length > 0 && (
+        <button
+          onClick={onGenerate}
+          style={{width:"100%",padding:"12px 0",borderRadius:14,background:"linear-gradient(135deg,#FF6B35,#FF4500)",color:"#fff",border:"none",fontSize:14,fontWeight:900,cursor:"pointer",boxShadow:"0 5px 18px rgba(255,107,53,0.42)",fontFamily:"'Playfair Display',serif",letterSpacing:0.3}}
+        >
+          🍳 この食材で献立を提案
+        </button>
+      )}
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════
+   SMALL SHARED UI
+══════════════════════════════════════════ */
+function SLabel({icon,children}){
+  return <div style={{fontSize:9,fontWeight:800,letterSpacing:2.5,color:"#C8C0B4",textTransform:"uppercase",marginBottom:10,display:"flex",alignItems:"center",gap:5}}><span style={{fontSize:13}}>{icon}</span>{children}</div>;
+}
+function Card({children,style}){
+  return <div style={{background:"#fff",borderRadius:18,padding:"14px 14px",marginBottom:10,border:"1px solid #F0EDE8",boxShadow:"0 2px 12px rgba(0,0,0,0.05)",...style}}>{children}</div>;
+}
+function UBadge({label}){
+  return <span style={{display:"inline-flex",alignItems:"center",gap:2,background:"linear-gradient(135deg,#FF6B35,#FF4500)",color:"#fff",fontSize:9,fontWeight:800,padding:"2px 7px",borderRadius:100,letterSpacing:0.5}}>⚡{label}</span>;
+}
+function IChip({item,urgent}){
+  return(
+    <div style={{display:"flex",alignItems:"center",gap:8,padding:"8px 11px",borderRadius:12,marginBottom:5,background:urgent?"#FFF5F0":"#F9FDF9",border:urgent?"1.5px solid #FFCDB8":"1.5px solid #D4EDD6"}}>
+      <span style={{fontSize:20}}>{item.emoji||"🥬"}</span>
+      <div style={{flex:1}}>
+        <div style={{fontSize:13,fontWeight:700,color:"#1a1a1a"}}>{item.name}</div>
+        {item.freshness&&<div style={{fontSize:10,color:urgent?"#E05A2B":"#6BAA72",fontWeight:500}}>{urgent?"⏰ ":""}{item.freshness}</div>}
+      </div>
+      {urgent&&<UBadge label="要使用"/>}
+    </div>
+  );
+}
+function NRow({label,pct,color}){
+  return(
+    <div style={{marginBottom:6}}>
+      <div style={{display:"flex",justifyContent:"space-between",fontSize:10,color:"#999",marginBottom:2,fontWeight:600}}><span>{label}</span><span style={{color}}>{pct}%</span></div>
+      <div style={{height:5,borderRadius:3,background:"#F0F0F0",overflow:"hidden"}}><div style={{height:"100%",width:`${pct}%`,background:color,borderRadius:3,transition:"width 1s ease"}}/></div>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════
+   DISH / GENRE BUTTONS
+══════════════════════════════════════════ */
+function DishBtn({d,selected,onClick}){
+  return(
+    <div onClick={onClick} style={{flex:1,borderRadius:14,overflow:"hidden",cursor:"pointer",transition:"transform 0.18s,box-shadow 0.18s",transform:selected?"scale(1.06)":"scale(1)",boxShadow:selected?"0 6px 20px rgba(0,0,0,0.16)":"0 2px 8px rgba(0,0,0,0.07)"}}>
+      <div style={{height:68,background:d.grad,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:1,position:"relative"}}>
+        {selected&&<div style={{position:"absolute",top:5,right:5,width:16,height:16,borderRadius:"50%",background:"rgba(255,255,255,0.92)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:900,color:"#2E7D32"}}>✓</div>}
+        <div style={{fontSize:20}}>{d.emoji}</div>
+        <div style={{fontSize:15,fontWeight:900,color:"#fff",fontFamily:"'Playfair Display',serif",lineHeight:1}}>{d.n}</div>
+        <div style={{fontSize:9,color:"rgba(255,255,255,0.85)",fontWeight:700}}>{d.label}</div>
+      </div>
+    </div>
+  );
+}
+function GenreBtn({g,selected,onToggle}){
+  return(
+    <button onClick={()=>onToggle(g.id)} style={{padding:"8px 7px",borderRadius:13,background:selected?g.bg:g.light,border:selected?`2px solid ${g.bg}`:`2px solid ${g.bg}28`,color:selected?"#fff":g.bg,fontSize:11,fontWeight:selected?800:600,cursor:"pointer",transition:"all 0.2s",boxShadow:selected?`0 4px 14px ${g.bg}44`:"0 1px 5px rgba(0,0,0,0.04)",transform:selected?"scale(1.04)":"scale(1)",textAlign:"left",display:"flex",flexDirection:"column",gap:1}}>
+      <span style={{fontSize:11}}>{g.label}</span>
+      <span style={{fontSize:9,opacity:selected?0.85:0.6,fontWeight:500}}>{g.sub}</span>
+    </button>
+  );
+}
+
+/* ══════════════════════════════════════════
+   FINISH IMAGE — Claude API で料理写真URLを取得
+══════════════════════════════════════════ */
+function FinishImage({recipe, accentColor}){
+  const [imgUrl, setImgUrl]   = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [tried, setTried]     = useState(false);
+  const [imgError, setImgError] = useState(false);
+
+  const generate = async () => {
+    setLoading(true);
+    try {
+      // Claude に料理名・説明から Unsplash 検索キーワードを英語で出力させる
+      const res = await callClaude(
+        [{role:"user", content:
+          `料理「${recipe.name}」(${recipe.finishDesc||""}) に最も近い料理写真を Unsplash で検索するための英語キーワードを1〜3語で答えてください。JSONのみで: {"keyword":"japanese stir fry tofu"}`
+        }],
+        "料理写真の検索キーワード専門家。英語キーワードのみ返す。"
+      );
+      const kw = JSON.parse(res).keyword || recipe.name;
+      const encoded = encodeURIComponent(kw);
+      // Unsplash Source API — CORS対応・無料・キー不要
+      const url = `https://source.unsplash.com/600x400/?${encoded},food,dish,plated`;
+      setImgUrl(url);
+    } catch {
+      setImgUrl(null);
+    }
+    setTried(true);
+    setLoading(false);
+  };
+
+  // まだ生成していない状態
+  if(!tried && !loading) return (
+    <button
+      onClick={generate}
+      style={{
+        width:"100%", padding:"14px 0", borderRadius:14, marginTop:6,
+        background:`linear-gradient(135deg,${accentColor}18,${accentColor}08)`,
+        border:`2px dashed ${accentColor}40`,
+        color:accentColor, cursor:"pointer",
+        display:"flex", alignItems:"center", justifyContent:"center", gap:8,
+        fontSize:13, fontWeight:800, transition:"all 0.2s",
+        fontFamily:"'Noto Sans JP',sans-serif",
+      }}
+    >
+      <span style={{fontSize:20}}>📸</span>完成イメージを生成する
+    </button>
+  );
+
+  // 生成中
+  if(loading) return (
+    <div style={{width:"100%",height:180,borderRadius:14,background:`${accentColor}10`,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:10,marginTop:6,border:`1.5px solid ${accentColor}20`}}>
+      <div style={{fontSize:36,animation:"spin 1.5s linear infinite"}}>🍽️</div>
+      <div style={{fontSize:12,color:accentColor,fontWeight:700,animation:"pulse 1.5s infinite"}}>画像を生成中…</div>
+    </div>
+  );
+
+  // 画像エラー or 取得失敗 → 絵文字フォールバック
+  if(imgError || !imgUrl) return (
+    <div style={{borderRadius:14,padding:"16px",background:`linear-gradient(135deg,${accentColor}14,${accentColor}06)`,border:`1.5px solid ${accentColor}25`,display:"flex",alignItems:"center",gap:12,marginTop:6}}>
+      <div style={{fontSize:52,filter:`drop-shadow(0 4px 10px ${accentColor}44)`}}>{recipe.finishEmoji||"✨"}</div>
+      <div>
+        <div style={{fontSize:11,fontWeight:800,color:accentColor,marginBottom:3}}>完成イメージ</div>
+        <div style={{fontSize:12,color:"#555",lineHeight:1.55}}>{recipe.finishDesc}</div>
+      </div>
+    </div>
+  );
+
+  // 画像表示
+  return (
+    <div style={{borderRadius:14,overflow:"hidden",marginTop:6,position:"relative",boxShadow:`0 6px 24px ${accentColor}30`}}>
+      <img
+        src={imgUrl}
+        alt={recipe.name}
+        onError={()=>setImgError(true)}
+        style={{width:"100%",height:200,objectFit:"cover",display:"block"}}
+      />
+      {/* overlay gradient + label */}
+      <div style={{position:"absolute",inset:0,background:"linear-gradient(to top,rgba(0,0,0,0.58) 0%,transparent 50%)"}}/>
+      <div style={{position:"absolute",bottom:0,left:0,right:0,padding:"12px 14px",display:"flex",alignItems:"flex-end",justifyContent:"space-between"}}>
+        <div>
+          <div style={{fontSize:10,fontWeight:800,color:"rgba(255,255,255,0.75)",letterSpacing:1.5,textTransform:"uppercase",marginBottom:2}}>完成イメージ</div>
+          <div style={{fontSize:13,fontWeight:700,color:"#fff",textShadow:"0 1px 6px rgba(0,0,0,0.5)",lineHeight:1.4}}>{recipe.finishDesc}</div>
+        </div>
+        <div style={{fontSize:28,filter:"drop-shadow(0 2px 6px rgba(0,0,0,0.4))"}}>{recipe.finishEmoji||"✨"}</div>
+      </div>
+      {/* re-generate button */}
+      <button
+        onClick={()=>{setImgError(false);setImgUrl(null);setTried(false);}}
+        style={{position:"absolute",top:8,right:8,background:"rgba(0,0,0,0.35)",backdropFilter:"blur(6px)",border:"1px solid rgba(255,255,255,0.3)",borderRadius:8,color:"#fff",fontSize:10,fontWeight:700,padding:"4px 9px",cursor:"pointer"}}
+      >
+        🔄 再生成
+      </button>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════
+   RECIPE CARD
+══════════════════════════════════════════ */
+function RecipeCard({recipe,index}){
+  const [open,setOpen]=useState(index===0);
+  const acs=["#FF6B35","#2D9B6F","#3B6CF6","#D4621A"];
+  const ac=acs[index%acs.length];
+  const bgEmojis=RECIPE_BG_EMOJIS[index%RECIPE_BG_EMOJIS.length];
+  return(
+    <div style={{background:"#fff",borderRadius:18,overflow:"hidden",marginBottom:12,boxShadow:"0 3px 16px rgba(0,0,0,0.07)",border:"1px solid #F0EDE8"}}>
+      <div style={{position:"relative",height:130,background:RECIPE_GRADS[index%RECIPE_GRADS.length],overflow:"hidden"}}>
+        {bgEmojis.map((e,i)=>(
+          <div key={i} style={{position:"absolute",fontSize:i===0?68:46,opacity:0.12,top:i<1?"5%":"42%",left:[`5%`,`42%`,`68%`][i],transform:`rotate(${[-15,20,-8][i]}deg)`,pointerEvents:"none"}}>{e}</div>
+        ))}
+        <div style={{position:"absolute",inset:0,background:"linear-gradient(to top,rgba(0,0,0,0.5) 0%,transparent 55%)"}}/>
+        <div style={{position:"absolute",bottom:0,left:0,right:0,padding:"10px 14px",display:"flex",alignItems:"flex-end",gap:8}}>
+          <div style={{fontSize:36,filter:"drop-shadow(0 2px 8px rgba(0,0,0,0.4))"}}>{recipe.emoji||"🍳"}</div>
+          <div>
+            <div style={{fontSize:14,fontWeight:800,color:"#fff",lineHeight:1.25,textShadow:"0 2px 8px rgba(0,0,0,0.5)"}}>{recipe.name}</div>
+            <div style={{display:"flex",gap:5,marginTop:3,flexWrap:"wrap"}}>
+              <span style={{background:"rgba(255,255,255,0.2)",backdropFilter:"blur(6px)",color:"#fff",fontSize:10,fontWeight:700,padding:"1px 8px",borderRadius:100,border:"1px solid rgba(255,255,255,0.3)"}}>⏱{recipe.time||"20分"}</span>
+              {recipe.urgentIngredients?.slice(0,2).map(u=><span key={u} style={{background:"rgba(255,69,0,0.82)",color:"#fff",fontSize:9,fontWeight:800,padding:"1px 7px",borderRadius:100}}>⚡{u}</span>)}
+            </div>
+          </div>
+        </div>
+      </div>
+      <div style={{padding:"11px 13px"}}>
+        <div style={{display:"flex",flexWrap:"wrap",gap:5,marginBottom:9}}>
+          {recipe.ingredients?.map((ing,i)=>(
+            <span key={i} style={{padding:"3px 9px",borderRadius:100,fontSize:11,fontWeight:700,background:ing.urgent?"#FFF0EB":"#F5FFF5",border:`1.5px solid ${ing.urgent?"#FFCDB8":"#C8E8CA"}`,color:ing.urgent?"#C0392B":"#2E7D32"}}>
+              {ing.name}<span style={{opacity:0.55,fontWeight:400}}> {ing.amount}</span>
+            </span>
+          ))}
+        </div>
+        <button onClick={()=>setOpen(!open)} style={{width:"100%",background:open?"#FFF8F5":"#FAFAFA",border:`1.5px solid ${open?"#FFD0BC":"#EBEBEB"}`,borderRadius:10,padding:"8px 12px",display:"flex",alignItems:"center",justifyContent:"space-between",cursor:"pointer",marginBottom:open?10:0,fontSize:12,fontWeight:700,color:open?ac:"#888",transition:"all 0.2s"}}>
+          <span>📋 作り方を{open?"閉じる":"見る"}</span>
+          <span style={{transition:"transform 0.3s",transform:open?"rotate(180deg)":"rotate(0deg)",fontSize:10}}>▼</span>
+        </button>
+        {open&&(
+          <div>
+            {recipe.steps?.map((step,i)=>(
+              <div key={i} style={{display:"flex",gap:9,marginBottom:9,alignItems:"flex-start"}}>
+                <div style={{width:24,height:24,borderRadius:8,flexShrink:0,background:`linear-gradient(135deg,${ac},${ac}CC)`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:900,color:"#fff"}}>{i+1}</div>
+                <div style={{flex:1,paddingTop:3}}>
+                  <div style={{fontSize:12,lineHeight:1.6,color:"#333",fontWeight:500}}>{step.desc}</div>
+                  {step.tip&&<div style={{fontSize:10,color:"#E8900A",marginTop:2}}>💡{step.tip}</div>}
+                </div>
+              </div>
+            ))}
+            {/* ── 完成イメージ写真 ── */}
+            <FinishImage recipe={recipe} accentColor={ac}/>
+            {recipe.nutrition&&(
+              <div style={{marginTop:9,padding:"9px 11px",background:"#FAFDF8",borderRadius:12,border:"1.5px solid #DDEEDD"}}>
+                <div style={{fontSize:9,fontWeight:800,letterSpacing:2,color:"#C0B8B0",textTransform:"uppercase",marginBottom:7}}>栄 養 バ ラ ン ス</div>
+                <NRow label="たんぱく質" pct={recipe.nutrition.protein}  color="#42A5F5"/>
+                <NRow label="脂質"       pct={recipe.nutrition.fat}      color="#FFA726"/>
+                <NRow label="炭水化物"   pct={recipe.nutrition.carbs}    color="#66BB6A"/>
+                <NRow label="ビタミン"   pct={recipe.nutrition.vitamins} color="#AB47BC"/>
+                <div style={{fontSize:10,color:"#C0B8B0",fontWeight:600,marginTop:4,textAlign:"right"}}>{recipe.nutrition.calories} kcal/人</div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════
+   SHOPPING / SEASONING TABS
+══════════════════════════════════════════ */
+function ShoppingTab({list}){
+  const [chk,setChk]=useState({});
+  if(!list?.length) return(
+    <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"40px 24px",gap:10}}>
+      <div style={{fontSize:52}}>🛒</div>
+      <div style={{fontWeight:700,color:"#C0B8B0",fontSize:13,textAlign:"center"}}>食材を分析すると<br/>買い物リストが表示されます</div>
+    </div>
+  );
+  const done=Object.values(chk).filter(Boolean).length;
+  return(
+    <div>
+      <div style={{background:"linear-gradient(135deg,#E8F5E9,#F1F8E9)",borderRadius:14,padding:"10px 14px",marginBottom:10,display:"flex",justifyContent:"space-between",alignItems:"center",border:"1.5px solid #C8E8CA"}}>
+        <div style={{fontSize:12,fontWeight:700,color:"#2E7D32"}}>進捗</div>
+        <div style={{fontSize:14,fontWeight:900,color:"#4CAF50",fontFamily:"'Playfair Display',serif"}}>{done}<span style={{opacity:0.45}}> / {list.length}</span></div>
+      </div>
+      {list.map((item,i)=>(
+        <div key={i} onClick={()=>setChk(p=>({...p,[i]:!p[i]}))} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 12px",borderRadius:13,marginBottom:6,cursor:"pointer",background:"#fff",border:chk[i]?"1.5px solid #C5E1A5":"1.5px solid #F0EDE8",opacity:chk[i]?0.5:1,transition:"all 0.2s",boxShadow:"0 2px 6px rgba(0,0,0,0.04)"}}>
+          <div style={{width:22,height:22,borderRadius:7,flexShrink:0,border:chk[i]?"none":"2px solid #DDD",background:chk[i]?"linear-gradient(135deg,#4CAF50,#2E7D32)":"transparent",display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,color:"#fff"}}>{chk[i]&&"✓"}</div>
+          <span style={{fontSize:22}}>{item.emoji||"🛒"}</span>
+          <div style={{flex:1}}>
+            <div style={{fontSize:13,fontWeight:700,color:"#1a1a1a",textDecoration:chk[i]?"line-through":"none"}}>{item.name}</div>
+            {item.reason&&<div style={{fontSize:10,color:"#C0B8B0"}}>{item.reason}</div>}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+function SeasoningTab({seasonings,onCapture}){
+  return(
+    <div>
+      <Card>
+        <SLabel icon="🧂">調 味 料 管 理</SLabel>
+        <p style={{fontSize:12,color:"#999",marginBottom:14,lineHeight:1.6}}>調味料棚を撮影して在庫を自動管理。残量が少ないものも自動検出します。</p>
+        <div style={{display:"flex",justifyContent:"center"}}>
+          <button onClick={onCapture} style={{display:"flex",alignItems:"center",gap:7,padding:"11px 22px",borderRadius:100,background:"linear-gradient(135deg,#00BCD4,#0097A7)",color:"#fff",border:"none",fontSize:13,fontWeight:800,cursor:"pointer",boxShadow:"0 5px 16px rgba(0,188,212,0.35)"}}>
+            <span style={{fontSize:16}}>📹</span>調味料を撮影する
+          </button>
+        </div>
+      </Card>
+      {seasonings?.length>0&&(
+        <Card>
+          <SLabel icon="✅">登 録 済 み</SLabel>
+          <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+            {seasonings.map((s,i)=>(
+              <span key={i} style={{padding:"5px 12px",borderRadius:100,fontSize:12,fontWeight:700,background:s.low?"#FFF3E0":"#F0FFF0",border:`1.5px solid ${s.low?"#FFCC80":"#C8E8CA"}`,color:s.low?"#E65100":"#2E7D32",display:"inline-flex",alignItems:"center",gap:4}}>
+                {s.emoji}{s.name}{s.low&&<span style={{fontSize:9,fontWeight:800,color:"#FF6D00",background:"#FFE0B2",borderRadius:4,padding:"0 3px"}}>残少</span>}
+              </span>
+            ))}
+          </div>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════
+   LOADING
+══════════════════════════════════════════ */
+function Loading({msg}){
+  return(
+    <div style={{position:"fixed",inset:0,zIndex:500,background:"rgba(250,248,245,0.96)",backdropFilter:"blur(18px)",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}>
+      <div style={{fontSize:68,animation:"spin 2s linear infinite",marginBottom:14}}>🍳</div>
+      <div style={{fontSize:17,fontWeight:800,color:"#1a1a1a",fontFamily:"'Playfair Display',serif",marginBottom:4}}>{msg}</div>
+      <div style={{fontSize:11,color:"#bbb",animation:"pulse 2s infinite",letterSpacing:1.5}}>AI が解析しています</div>
+      <div style={{display:"flex",gap:7,marginTop:14}}>
+        {[0,1,2].map(i=><div key={i} style={{width:8,height:8,borderRadius:"50%",background:"#FF6B35",animation:`bounce 0.8s ${i*0.18}s ease-in-out infinite alternate`}}/>)}
+      </div>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════
+   HERO HEADER
+══════════════════════════════════════════ */
+function HeroHeader(){
+  const foods=[
+    {top:"6%",left:"3%",emoji:"🥦",size:40,rot:-12,delay:0},
+    {top:"4%",left:"20%",emoji:"🍅",size:32,rot:8,delay:0.4},
+    {top:"7%",left:"40%",emoji:"🥕",size:35,rot:-5,delay:0.8},
+    {top:"3%",left:"60%",emoji:"🫑",size:33,rot:15,delay:0.2},
+    {top:"5%",left:"78%",emoji:"🍋",size:30,rot:-18,delay:0.6},
+    {top:"52%",left:"2%",emoji:"🌽",size:36,rot:10,delay:1.0},
+    {top:"50%",left:"20%",emoji:"🍓",size:28,rot:-8,delay:0.3},
+    {top:"46%",left:"40%",emoji:"🥬",size:38,rot:6,delay:0.7},
+    {top:"50%",left:"60%",emoji:"🍇",size:28,rot:-14,delay:0.5},
+    {top:"50%",left:"78%",emoji:"🥑",size:34,rot:20,delay:0.9},
+  ];
+  return(
+    <div style={{position:"relative",height:130,overflow:"hidden",background:"linear-gradient(160deg,#1B5E20 0%,#2E7D32 40%,#43A047 100%)",flexShrink:0}}>
+      {foods.map((f,i)=>(
+        <div key={i} style={{position:"absolute",top:f.top,left:f.left,fontSize:f.size,transform:`rotate(${f.rot}deg)`,opacity:0.2,animation:`floatBob 4.5s ease-in-out ${f.delay}s infinite alternate`,pointerEvents:"none"}}>
+          {f.emoji}
+        </div>
+      ))}
+      <svg viewBox="0 0 480 28" style={{position:"absolute",bottom:-1,left:0,width:"100%"}} preserveAspectRatio="none">
+        <path d="M0,14 C80,28 160,0 240,14 C320,28 400,0 480,14 L480,28 L0,28Z" fill="#FAF8F5"/>
+      </svg>
+      <div style={{position:"absolute",bottom:18,left:0,right:0,padding:"0 16px",display:"flex",alignItems:"center",gap:10}}>
+        <LeafLogo size={40}/>
+        <div>
+          <div style={{fontFamily:"'Playfair Display',serif",fontSize:23,fontWeight:900,color:"#fff",letterSpacing:-0.8,lineHeight:1,textShadow:"0 2px 12px rgba(0,0,0,0.4)"}}>
+            FreshMeal<span style={{color:"#A5D6A7"}}>.</span>
+          </div>
+          <div style={{fontSize:8,color:"rgba(255,255,255,0.6)",letterSpacing:2.5,textTransform:"uppercase",fontWeight:700,marginTop:1}}>
+            AI Fridge Planner
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════
+   MAIN APP
+══════════════════════════════════════════ */
+export default function App(){
+  const [tabIdx,setTabIdx]      = useState(0);
+  const [dishCount,setDishCount]= useState(2);
+  const [genres,setGenres]      = useState(["any"]);
+  const [searchText,setSearchText] = useState("");
+  const [manualIngredients,setManualIngredients] = useState([]);
+  const [showInputPanel,setShowInputPanel] = useState(false);
+  const [showCreateModal,setShowCreateModal] = useState(false);
+
+  const [vidStream,setVidStream]= useState(null);
+  const [frame,setFrame]        = useState(null);
+  const [loading,setLoading]    = useState(false);
+  const [loadMsg,setLoadMsg]    = useState("");
+  const [ingredients,setIngredients] = useState(null);
+  const [recipes,setRecipes]    = useState(null);
+  const [shopping,setShopping]  = useState(null);
+  const [seasonings,setSeasonings] = useState(null);
+  const [capMode,setCapMode]    = useState("fridge");
+  const vRef = useRef(null);
+
+  // ── swipe ──
+  const swipeStartX=useRef(null);
+  const swipeStartY=useRef(null);
+  const isDragging=useRef(false);
+  const [dragX,setDragX]=useState(0);
+
+  const onTouchStart=useCallback(e=>{swipeStartX.current=e.touches[0].clientX;swipeStartY.current=e.touches[0].clientY;isDragging.current=false;},[]);
+  const onTouchMove=useCallback(e=>{
+    if(swipeStartX.current==null)return;
+    const dx=e.touches[0].clientX-swipeStartX.current;
+    const dy=e.touches[0].clientY-swipeStartY.current;
+    if(!isDragging.current){if(Math.abs(dx)<Math.abs(dy))return;isDragging.current=true;}
+    e.preventDefault();setDragX(dx);
+  },[]);
+  const onTouchEnd=useCallback(e=>{
+    if(!isDragging.current){setDragX(0);return;}
+    const dx=e.changedTouches[0].clientX-swipeStartX.current;
+    setDragX(0);
+    if(Math.abs(dx)>50){if(dx<0)setTabIdx(p=>Math.min(p+1,TABS.length-1));else setTabIdx(p=>Math.max(p-1,0));}
+    swipeStartX.current=null;isDragging.current=false;
+  },[]);
+  const mouseStartX=useRef(null);
+  const onMouseDown=useCallback(e=>{mouseStartX.current=e.clientX;},[]);
+  const onMouseUp=useCallback(e=>{
+    if(mouseStartX.current==null)return;
+    const dx=e.clientX-mouseStartX.current;
+    if(Math.abs(dx)>60){if(dx<0)setTabIdx(p=>Math.min(p+1,TABS.length-1));else setTabIdx(p=>Math.max(p-1,0));}
+    mouseStartX.current=null;
+  },[]);
+
+  const tab=TABS[tabIdx];
+
+  const toggleGenre=id=>{
+    if(id==="any"){setGenres(["any"]);return;}
+    setGenres(p=>{const f=p.filter(g=>g!=="any");const n=f.includes(id)?f.filter(g=>g!==id):[...f,id];return n.length?n:["any"];});
+  };
+
+  // search placeholder varies by state
+  const searchPlaceholder = (() => {
+    const activeGenre = GENRES.find(g=>genres.includes(g.id)&&g.id!=="any");
+    if(activeGenre) return `${activeGenre.label} のレシピを検索…`;
+    return "メニュー・食材を入力して検索…";
+  })();
+
+  // handle search / dish selection
+  const handleSearch = async () => {
+    if(!searchText.trim()) return;
+    setLoading(true); setLoadMsg("レシピを検索中…");
+    const gl = genres.includes("any")?"お任せ":genres.join(", ");
+    try{
+      const res=await callClaude([{role:"user",content:`「${searchText}」に関する${dishCount}品の献立をJSONのみで。ジャンル:${gl}
+{"menu":[{"name":"料理名","emoji":"絵文字","time":"調理時間","finishEmoji":"完成絵文字","finishDesc":"完成の一言","urgentIngredients":[],"ingredients":[{"name":"食材","amount":"分量","urgent":false}],"steps":[{"desc":"手順","tip":"コツ(任意)"}],"nutrition":{"calories":数値,"protein":0-100,"fat":0-100,"carbs":0-100,"vitamins":0-100}}],"nutritionBalance":"栄養コメント"}`}],
+        "料理の専門家。栄養バランスを重視。");
+      setRecipes(JSON.parse(res)); setTabIdx(1);
+    }catch{ setRecipes(null); }
+    setLoading(false);
+  };
+
+  // popular dish tapped
+  const handleSelectDish = async (dishName) => {
+    setSearchText(dishName);
+    setLoading(true); setLoadMsg(`${dishName} のレシピを生成中…`);
+    const gl = genres.includes("any")?"お任せ":genres.join(", ");
+    try{
+      const res=await callClaude([{role:"user",content:`「${dishName}」のレシピを${dishCount}品構成でJSONのみ。ジャンル:${gl}
+{"menu":[{"name":"料理名","emoji":"絵文字","time":"調理時間","finishEmoji":"完成絵文字","finishDesc":"完成の一言","urgentIngredients":[],"ingredients":[{"name":"食材","amount":"分量","urgent":false}],"steps":[{"desc":"手順","tip":"コツ(任意)"}],"nutrition":{"calories":数値,"protein":0-100,"fat":0-100,"carbs":0-100,"vitamins":0-100}}],"nutritionBalance":"栄養コメント"}`}],
+        "料理の専門家。わかりやすいレシピを提案。");
+      setRecipes(JSON.parse(res)); setTabIdx(1);
+    }catch{ setRecipes(null); }
+    setLoading(false);
+  };
+
+  // manual ingredients → recipes
+  const genFromManual = async () => {
+    setLoading(true); setLoadMsg("献立を考案中…");
+    const gl = genres.includes("any")?"お任せ":genres.join(", ");
+    const ingList = manualIngredients.join("、");
+    try{
+      const res=await callClaude([{role:"user",content:`食材「${ingList}」を使った${dishCount}品の献立をJSONのみで。ジャンル:${gl}
+{"menu":[{"name":"料理名","emoji":"絵文字","time":"調理時間","finishEmoji":"完成絵文字","finishDesc":"完成の一言","urgentIngredients":[],"ingredients":[{"name":"食材","amount":"分量","urgent":false}],"steps":[{"desc":"手順","tip":"コツ(任意)"}],"nutrition":{"calories":数値,"protein":0-100,"fat":0-100,"carbs":0-100,"vitamins":0-100}}],"nutritionBalance":"栄養コメント"}`}],
+        "料理の専門家。指定食材を最大限活用。");
+      setRecipes(JSON.parse(res)); setTabIdx(1);
+    }catch{ setRecipes(null); }
+    setLoading(false);
+  };
+
+  const startCam=async mode=>{setCapMode(mode);try{const s=await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment"},audio:false});setVidStream(s);setTimeout(()=>{if(vRef.current)vRef.current.srcObject=s;},80);}catch{alert("カメラの許可が必要です");}};
+  const stopCam=()=>{vidStream?.getTracks().forEach(t=>t.stop());setVidStream(null);};
+  const capture=async()=>{if(!vRef.current)return;const blob=await capFrame(vRef.current);setFrame({blob,url:URL.createObjectURL(blob),mode:capMode});stopCam();};
+
+  const analyzeFridge=async()=>{
+    if(!frame)return;setLoading(true);setLoadMsg("食材を認識中…");
+    try{
+      const data=await blobToB64(frame.blob);
+      const res=await callClaude([{role:"user",content:[
+        {type:"image",source:{type:"base64",media_type:"image/jpeg",data}},
+        {type:"text",text:'画像から食材を全て特定しJSONのみ:\n{"urgent":[{"name":"食材名","emoji":"絵文字","freshness":"今日中/2-3日以内/1週間以内"}],"normal":[{"name":"食材名","emoji":"絵文字","freshness":"消費目安"}],"shopping":[{"name":"食材名","emoji":"絵文字","reason":"理由"}]}'},
+      ]}],"冷蔵庫食材管理の専門家。");
+      const p=JSON.parse(res);setIngredients(p);setShopping(p.shopping||[]);
+    }catch{
+      setIngredients({urgent:[{name:"豆腐",emoji:"🟦",freshness:"今日中"},{name:"もやし",emoji:"🌱",freshness:"2日以内"}],normal:[{name:"鶏むね肉",emoji:"🍗",freshness:"3-4日"},{name:"卵",emoji:"🥚",freshness:"2週間"}],shopping:[{name:"牛乳",emoji:"🥛",reason:"在庫少"}]});
+      setShopping([{name:"牛乳",emoji:"🥛",reason:"在庫少"}]);
+    }
+    setLoading(false);
+  };
+
+  const genRecipes=async()=>{
+    if(!ingredients)return;setLoading(true);setLoadMsg("献立を考案中…");
+    const gl=genres.includes("any")?"お任せ":genres.join(", ");
+    const ul=ingredients.urgent?.map(i=>i.name).join(", ")||"";
+    const nl=ingredients.normal?.map(i=>i.name).join(", ")||"";
+    try{
+      const res=await callClaude([{role:"user",content:`冷蔵庫食材から${dishCount}品の献立をJSONのみで。優先食材:${ul} その他:${nl} ジャンル:${gl}
+{"menu":[{"name":"料理名","emoji":"絵文字","time":"調理時間","finishEmoji":"完成絵文字","finishDesc":"完成の一言","urgentIngredients":["足が早い食材"],"ingredients":[{"name":"食材","amount":"分量","urgent":true}],"steps":[{"desc":"手順","tip":"コツ(任意)"}],"nutrition":{"calories":数値,"protein":0-100,"fat":0-100,"carbs":0-100,"vitamins":0-100}}],"nutritionBalance":"栄養コメント"}`}],
+        "栄養バランスを重視した料理の専門家。足が早い食材を優先。");
+      setRecipes(JSON.parse(res));setTabIdx(1);
+    }catch{
+      setRecipes({menu:[{name:"豆腐ともやしの中華炒め",emoji:"🥢",time:"15分",finishEmoji:"✨🥢😋",finishDesc:"ごま油香るシャキシャキ仕上げ",urgentIngredients:["豆腐","もやし"],ingredients:[{name:"豆腐",amount:"1丁",urgent:true},{name:"もやし",amount:"1袋",urgent:true}],steps:[{desc:"豆腐を水切りして一口大に切る",tip:"電子レンジ2分で時短"},{desc:"フライパンで鶏肉→もやし→豆腐の順に炒める"},{desc:"醤油・ごま油で味を整えて完成",tip:"ネギを散らすと彩りUP"}],nutrition:{calories:280,protein:72,fat:35,carbs:28,vitamins:60}}],nutritionBalance:"たんぱく質・ビタミンのバランスが良好。"});
+      setTabIdx(1);
+    }
+    setLoading(false);
+  };
+
+  const analyzeSeas=async()=>{
+    if(!frame)return;setLoading(true);setLoadMsg("調味料を認識中…");
+    try{const data=await blobToB64(frame.blob);const res=await callClaude([{role:"user",content:[{type:"image",source:{type:"base64",media_type:"image/jpeg",data}},{type:"text",text:'調味料をリストアップしJSONのみ:\n{"seasonings":[{"name":"調味料名","emoji":"絵文字","low":true}]}'}]}],"調味料管理の専門家。");setSeasonings(JSON.parse(res).seasonings);}
+    catch{setSeasonings([{name:"醤油",emoji:"🫙",low:true},{name:"みりん",emoji:"🍶",low:false},{name:"砂糖",emoji:"🍬",low:false}]);}
+    setFrame(null);setLoading(false);
+  };
+  const handleAnalyze=()=>{if(frame?.mode==="seasoning")analyzeSeas();else analyzeFridge();};
+
+  const CamView=()=>(
+    <Card style={{padding:"10px"}}>
+      <video ref={vRef} autoPlay playsInline muted style={{width:"100%",display:"block",borderRadius:12,aspectRatio:"4/3",objectFit:"cover"}}/>
+      <div style={{display:"flex",justifyContent:"center",marginTop:10}}>
+        <button onClick={capture} style={{display:"flex",alignItems:"center",gap:6,padding:"10px 24px",borderRadius:100,background:"linear-gradient(135deg,#FF6B35,#FF4500)",color:"#fff",border:"none",fontSize:13,fontWeight:800,cursor:"pointer",boxShadow:"0 5px 18px rgba(255,107,53,0.4)"}}>
+          <span style={{fontSize:16}}>⚡</span>撮影する
+        </button>
+      </div>
+    </Card>
+  );
+  const Preview=({analyzeLabel})=>(
+    <Card style={{padding:"10px"}}>
+      <img src={frame.url} alt="" style={{width:"100%",display:"block",borderRadius:12}}/>
+      <div style={{display:"flex",gap:8,marginTop:10,justifyContent:"center"}}>
+        <button onClick={()=>setFrame(null)} style={{padding:"9px 16px",borderRadius:100,background:"#F0EDE8",color:"#888",border:"none",fontSize:12,fontWeight:700,cursor:"pointer"}}>🔄 撮り直す</button>
+        <button onClick={handleAnalyze} style={{display:"flex",alignItems:"center",gap:6,padding:"9px 20px",borderRadius:100,background:"linear-gradient(135deg,#4CAF50,#2E7D32)",color:"#fff",border:"none",fontSize:12,fontWeight:800,cursor:"pointer",boxShadow:"0 4px 14px rgba(76,175,80,0.4)"}}>
+          <span style={{fontSize:14}}>🔍</span>{analyzeLabel}
+        </button>
+      </div>
+    </Card>
+  );
+
+  const clampedDrag=Math.max(-60,Math.min(60,dragX));
+
+  return(
+    <div style={{minHeight:"100vh",background:"#FAF8F5",fontFamily:"'Noto Sans JP',sans-serif",overflowX:"hidden",display:"flex",flexDirection:"column"}}>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800;900&family=Noto+Sans+JP:wght@400;500;700;800&display=swap');
+        *{box-sizing:border-box;margin:0;padding:0;}
+        ::-webkit-scrollbar{display:none;}
+        @keyframes spin{to{transform:rotate(360deg)}}
+        @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+        @keyframes bounce{from{transform:translateY(0)}to{transform:translateY(-6px)}}
+        @keyframes slideIn{from{opacity:0;transform:translateX(24px)}to{opacity:1;transform:translateX(0)}}
+        @keyframes floatBob{from{transform:translateY(0)}to{transform:translateY(-9px)}}
+        @keyframes sheetUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+        @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+        input::placeholder{color:#C8C0B4;}
+      `}</style>
+
+      {loading&&<Loading msg={loadMsg}/>}
+
+      <div style={{maxWidth:480,width:"100%",margin:"0 auto",display:"flex",flexDirection:"column",height:"100vh",overflow:"hidden",position:"relative"}}>
+
+        {/* ── HERO ── */}
+        <HeroHeader/>
+
+        {/* ── SMART SEARCH BAR + CREATE BUTTON ── */}
+        <div style={{display:"flex",alignItems:"center",gap:6,padding:"8px 12px 6px",background:"#FAF8F5",flexShrink:0}}>
+          <div style={{flex:1}}>
+            <SearchBar
+              value={searchText}
+              onChange={setSearchText}
+              onSearch={handleSearch}
+              onClear={()=>setSearchText("")}
+              genres={genres}
+              placeholder={searchPlaceholder}
+            />
+          </div>
+          <button
+            onClick={()=>setShowCreateModal(true)}
+            style={{
+              flexShrink:0,
+              display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:1,
+              padding:"0 10px",
+              borderRadius:14,
+              background:"linear-gradient(135deg,#7C3AED,#5B21B6)",
+              border:"none",
+              color:"#fff",
+              fontSize:9,fontWeight:800,
+              cursor:"pointer",
+              boxShadow:"0 4px 14px rgba(124,58,237,0.42)",
+              height:44,minWidth:58,
+              fontFamily:"'Noto Sans JP',sans-serif",
+              transition:"transform 0.15s",
+            }}
+          >
+            <span style={{fontSize:17}}>📝</span>
+            <span style={{letterSpacing:0.3}}>レシピ作成</span>
+          </button>
+        </div>
+
+        {/* ── RECIPE CREATE MODAL ── */}
+        {showCreateModal&&(
+          <RecipeCreateModal
+            genres={genres}
+            onClose={()=>setShowCreateModal(false)}
+            onDone={newRecipe=>{
+              setRecipes(prev=>{
+                const base = prev || {menu:[],nutritionBalance:""};
+                return {...base, menu:[...(base.menu||[]), {...newRecipe, urgentIngredients:[]}]};
+              });
+              setTabIdx(1);
+            }}
+          />
+        )}
+
+        {/* ── SWIPE DOTS + TAB LABEL ── */}
+        <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:10,padding:"3px 12px 5px",background:"#FAF8F5",flexShrink:0}}>
+          {TABS.map((_,i)=>(
+            <div key={i} onClick={()=>setTabIdx(i)} style={{width:tabIdx===i?18:6,height:6,borderRadius:3,background:tabIdx===i?"#FF6B35":"#D8CFC5",transition:"all 0.28s",cursor:"pointer"}}/>
+          ))}
+          <div style={{fontSize:9,color:"#D0C8C0",letterSpacing:1,marginLeft:4}}>
+            {tabIdx>0&&"← "}スワイプ{tabIdx<TABS.length-1&&" →"}
+          </div>
+        </div>
+
+        {/* ── SWIPEABLE CONTENT ── */}
+        <div
+          onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}
+          onMouseDown={onMouseDown} onMouseUp={onMouseUp}
+          style={{flex:1,overflowY:"auto",overflowX:"hidden",padding:"0 12px 80px",transform:`translateX(${clampedDrag*0.12}px)`,transition:isDragging.current?"none":"transform 0.15s",userSelect:"none"}}
+        >
+
+          {/* ══ COOK ══ */}
+          {tab==="cook"&&(
+            <div style={{animation:"slideIn 0.26s ease"}}>
+
+              {/* レシピ作成バナー */}
+              <button
+                onClick={()=>setShowCreateModal(true)}
+                style={{
+                  width:"100%",marginTop:8,marginBottom:10,
+                  padding:"11px 16px",borderRadius:16,
+                  background:"linear-gradient(135deg,#7C3AED 0%,#5B21B6 100%)",
+                  border:"none",color:"#fff",cursor:"pointer",
+                  display:"flex",alignItems:"center",gap:10,
+                  boxShadow:"0 5px 18px rgba(124,58,237,0.38)",
+                  transition:"transform 0.15s,box-shadow 0.15s",
+                }}
+              >
+                <div style={{width:36,height:36,borderRadius:11,background:"rgba(255,255,255,0.2)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,flexShrink:0}}>📝</div>
+                <div style={{textAlign:"left",flex:1}}>
+                  <div style={{fontSize:13,fontWeight:800,letterSpacing:0.3}}>オリジナルレシピを作成</div>
+                  <div style={{fontSize:10,opacity:0.75,marginTop:1}}>料理名や食材を入力してAIがレシピを生成</div>
+                </div>
+                <div style={{fontSize:14,opacity:0.6}}>→</div>
+              </button>
+
+              {/* 品数 */}
+              <div style={{marginTop:6,marginBottom:8}}>
+                <SLabel icon="🍽️">品 数 を 選 ぶ</SLabel>
+                <div style={{display:"flex",gap:7}}>
+                  {DISH_COUNTS.map(d=><DishBtn key={d.n} d={d} selected={dishCount===d.n} onClick={()=>setDishCount(d.n)}/>)}
+                </div>
+              </div>
+
+              {/* ジャンル */}
+              <div style={{marginBottom:8}}>
+                <SLabel icon="🌍">食 べ た い ジ ャ ン ル</SLabel>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
+                  {GENRES.map(g=><GenreBtn key={g.id} g={g} selected={genres.includes(g.id)} onToggle={toggleGenre}/>)}
+                </div>
+              </div>
+
+              {/* 人気献立 OR 検索結果 */}
+              {!searchText && (
+                <PopularSection genres={genres} onSelectDish={handleSelectDish}/>
+              )}
+
+              {/* 手入力トグル */}
+              <div style={{marginBottom:8}}>
+                <button
+                  onClick={()=>setShowInputPanel(p=>!p)}
+                  style={{width:"100%",padding:"9px 14px",borderRadius:13,background:showInputPanel?"#FFF0EB":"#fff",border:showInputPanel?"1.5px solid #FFCDB8":"1.5px solid #EDE9E4",display:"flex",alignItems:"center",justifyContent:"space-between",cursor:"pointer",fontSize:12,fontWeight:700,color:showInputPanel?"#FF6B35":"#888",transition:"all 0.2s"}}
+                >
+                  <span>✏️ 食材を手入力して献立を作る {manualIngredients.length>0&&`(${manualIngredients.length}点選択中)`}</span>
+                  <span style={{transition:"transform 0.3s",transform:showInputPanel?"rotate(180deg)":"rotate(0deg)",fontSize:10}}>▼</span>
+                </button>
+                {showInputPanel&&(
+                  <div style={{background:"#fff",borderRadius:"0 0 13px 13px",border:"1.5px solid #FFCDB8",borderTop:"none",padding:"12px 12px 10px",animation:"fadeUp 0.2s ease"}}>
+                    <IngredientInputPanel
+                      manualIngredients={manualIngredients}
+                      onAdd={name=>setManualIngredients(p=>[...p,name])}
+                      onRemove={name=>setManualIngredients(p=>p.filter(x=>x!==name))}
+                      onGenerate={genFromManual}
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* カメラ撮影 */}
+              <div style={{marginBottom:8}}>
+                <SLabel icon="📹">冷 蔵 庫 を 撮 影</SLabel>
+                {!vidStream&&!frame&&(
+                  <button onClick={()=>startCam("fridge")} style={{width:"100%",padding:"13px 0",borderRadius:14,border:"2px dashed #D8CFC5",background:"linear-gradient(145deg,#FFF8F4,#FFF3EE)",display:"flex",alignItems:"center",justifyContent:"center",gap:12,cursor:"pointer"}}>
+                    <div style={{width:40,height:40,borderRadius:12,background:"linear-gradient(135deg,#FF6B35,#FF4500)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,boxShadow:"0 5px 14px rgba(255,107,53,0.4)"}}>📷</div>
+                    <div style={{textAlign:"left"}}>
+                      <div style={{fontSize:13,fontWeight:800,color:"#FF6B35"}}>タップしてカメラ起動</div>
+                      <div style={{fontSize:10,color:"#C0B0A0",marginTop:1}}>冷蔵庫・冷凍庫を映してください</div>
+                    </div>
+                  </button>
+                )}
+                {vidStream&&<CamView/>}
+                {frame?.mode==="fridge"&&<Preview analyzeLabel="食材を分析する"/>}
+              </div>
+
+              {/* 食材結果 */}
+              {ingredients&&(
+                <Card>
+                  <SLabel icon="⚡">優 先 使 用 食 材</SLabel>
+                  {ingredients.urgent?.map((item,i)=><IChip key={i} item={item} urgent/>)}
+                  <div style={{height:1,background:"#F5F0EA",margin:"8px 0"}}/>
+                  <SLabel icon="🥬">そ の 他 の 食 材</SLabel>
+                  {ingredients.normal?.map((item,i)=><IChip key={i} item={item}/>)}
+                  <div style={{display:"flex",justifyContent:"center",marginTop:12}}>
+                    <button onClick={genRecipes} style={{display:"flex",alignItems:"center",gap:8,padding:"12px 26px",borderRadius:100,background:"linear-gradient(135deg,#FF6B35,#FF4500)",color:"#fff",border:"none",fontSize:14,fontWeight:900,cursor:"pointer",boxShadow:"0 6px 20px rgba(255,107,53,0.43)",fontFamily:"'Playfair Display',serif"}}>
+                      🍳 献立を提案してもらう
+                    </button>
+                  </div>
+                </Card>
+              )}
+            </div>
+          )}
+
+          {/* ══ RECIPES ══ */}
+          {tab==="recipes"&&(
+            <div style={{animation:"slideIn 0.26s ease",paddingTop:6}}>
+              {!recipes?(
+                <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"28px 0",gap:10}}>
+                  <div style={{fontSize:48}}>🍳</div>
+                  <div style={{fontWeight:700,color:"#C0B8B0",fontSize:13,textAlign:"center"}}>まず食材を分析または<br/>メニューを検索してください</div>
+                  <div style={{display:"flex",gap:8,marginTop:4,flexWrap:"wrap",justifyContent:"center"}}>
+                    <button onClick={()=>setTabIdx(0)} style={{padding:"9px 18px",borderRadius:100,background:"#F0EDE8",color:"#888",border:"none",fontSize:12,fontWeight:700,cursor:"pointer"}}>← ご飯作るへ</button>
+                    <button onClick={()=>setShowCreateModal(true)} style={{padding:"9px 18px",borderRadius:100,background:"linear-gradient(135deg,#7C3AED,#5B21B6)",color:"#fff",border:"none",fontSize:12,fontWeight:800,cursor:"pointer",boxShadow:"0 4px 14px rgba(124,58,237,0.38)",display:"flex",alignItems:"center",gap:5}}>
+                      <span>📝</span>レシピを作成する
+                    </button>
+                  </div>
+                </div>
+              ):(
+                <div>
+                  <div style={{background:"linear-gradient(135deg,#E8F5E9,#F1F8E9)",borderRadius:14,padding:"9px 12px",marginBottom:10,border:"1.5px solid #C8E8CA",display:"flex",gap:8}}>
+                    <span style={{fontSize:15}}>📊</span>
+                    <div style={{fontSize:12,color:"#2E7D32",fontWeight:600,lineHeight:1.6}}>{recipes.nutritionBalance}</div>
+                  </div>
+                  {recipes.menu?.map((r,i)=><RecipeCard key={i} recipe={r} index={i}/>)}
+                  {/* レシピに追加ボタン */}
+                  <button
+                    onClick={()=>setShowCreateModal(true)}
+                    style={{
+                      width:"100%",padding:"13px 0",borderRadius:16,marginTop:4,marginBottom:8,
+                      background:"linear-gradient(135deg,#7C3AED,#5B21B6)",
+                      border:"none",color:"#fff",cursor:"pointer",
+                      display:"flex",alignItems:"center",justifyContent:"center",gap:8,
+                      boxShadow:"0 5px 18px rgba(124,58,237,0.38)",
+                      fontSize:13,fontWeight:800,
+                      fontFamily:"'Noto Sans JP',sans-serif",
+                    }}
+                  >
+                    <span style={{fontSize:18}}>📝</span>さらにレシピを追加作成
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ══ SHOPPING ══ */}
+          {tab==="shopping"&&(
+            <div style={{animation:"slideIn 0.26s ease",paddingTop:6}}>
+              <ShoppingTab list={shopping}/>
+            </div>
+          )}
+
+          {/* ══ SEASONING ══ */}
+          {tab==="seasoning"&&(
+            <div style={{animation:"slideIn 0.26s ease",paddingTop:6}}>
+              <SeasoningTab seasonings={seasonings} onCapture={()=>startCam("seasoning")}/>
+              {vidStream&&tab==="seasoning"&&<CamView/>}
+              {frame?.mode==="seasoning"&&<Preview analyzeLabel="調味料を認識"/>}
+            </div>
+          )}
+        </div>
+
+        {/* ══ TAB BAR ══ */}
+        <div style={{position:"absolute",bottom:0,left:0,right:0,background:"rgba(255,255,255,0.97)",backdropFilter:"blur(20px)",borderTop:"1px solid #EDE9E4",display:"flex",justifyContent:"space-around",padding:"7px 0 18px",zIndex:100,boxShadow:"0 -3px 14px rgba(0,0,0,0.06)"}}>
+          {TAB_META.map((t,i)=>{
+            const a=tabIdx===i;
+            return(
+              <button key={t.id} onClick={()=>setTabIdx(i)} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:2,background:a?"#FFF2ED":"none",border:a?"1.5px solid #FFCDB8":"1.5px solid transparent",borderRadius:12,padding:"5px 14px",color:a?"#FF6B35":"#C0B8B0",fontSize:9,fontWeight:a?800:500,cursor:"pointer",transition:"all 0.2s",minWidth:58}}>
+                <span style={{fontSize:21,filter:a?"none":"grayscale(40%)"}}>{t.icon}</span>
+                <span>{t.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(<React.StrictMode><App /></React.StrictMode>);
+</script>
+</body>
 </html>
